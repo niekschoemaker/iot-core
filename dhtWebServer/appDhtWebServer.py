@@ -51,7 +51,7 @@ def getData():
 		temp = row[2]
 		hum = row[3]
 
-	for row in curs.execute("SELECT * FROM DHT_data Where ID = esp32_gerben ORDER BY timestamp DESC LIMIT 1"):
+	for row in curs.execute("SELECT * FROM DHT_data Where ID = 'esp32_gerben' ORDER BY timestamp DESC LIMIT 1"):
 		time2 = str(row[1])
 		temp2 = row[2]
 		hum2 = row[3]
@@ -66,7 +66,10 @@ def index():
 	templateData = {
 	  'time'	: time,
       	  'temp'  : temp,
-      	  'hum'	: hum
+      	  'hum'	: hum,
+	  'time2'	: time2,
+      	  'temp2'  : temp2,
+      	  'hum2'	: hum2
 	}
 	return render_template('index.html', **templateData)
 
@@ -74,7 +77,7 @@ def index():
 def logData (temp, hum):
 	conn=sqlite3.connect('../' + dbname)
 	curs=conn.cursor()
-	curs.execute("INSERT INTO DHT_data values(datetime('now'), (?), (?))", (temp, hum))
+	curs.execute("INSERT INTO DHT_data values('esp32_gerben',datetime('now'), (?), (?))", (temp, hum))
 	conn.commit()
 	conn.close()
 

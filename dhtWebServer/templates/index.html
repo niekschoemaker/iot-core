@@ -9,7 +9,7 @@
 	    text-align: center;
 	}
 	#g1,
-	#g2 {
+	#g2, #g3, #g4 {
 	    width: 200px;
 	    height: 160px;
 	    display: inline-block;
@@ -20,16 +20,19 @@
 <body>
     <h1>DHT Sensor Data </h1>
     <div id="g1"></div>
-    <div id="g2"></div>
+	<div id="g2"></div>
+	<h2>DHT Sensor Data 2</h2>
+	<div id="g3"></div>
+	<div id="g4"></div>
     <hr>
 	<h3> Last Sensors Reading: {{ time }} ==> <a href="/"class="button">REFRESH</a></h3>	
 	<hr>
-	<p> @2018 Developed by MJRoBot.org</p>
+	<p> @2018 Developed by MJRoBot.org adjusted by Niek & Gerben</p>
     
     <script src="../static/raphael-2.1.4.min.js"></script>
     <script src="../static/justgage.js"></script>
     <script>
-	var g1, g2;
+	var g1, g2, g3, g4;
 	document.addEventListener("DOMContentLoaded", function(event) {
 	    g1 = new JustGage({
 		id: "g1",
@@ -49,7 +52,26 @@
 		title: "Humidity",
 		label: "%"
 	});
-      });
+	    g3 = new JustGage({
+		id: "g3",
+		value: {{temp2}},
+		valueFontColor: "yellow",
+		min: -10,
+		max: 50,
+		title: "temperature",
+		label: "Celcius"
+	});
+	    g4 = new JustGage({
+		id: "g4",
+		value: {{hum2}},
+		valueFontColor: "yellow",
+		min: 0,
+		max: 100,
+		title: "Humidity",
+		label: "%"
+	});
+      
+	  });
     </script>
 </body>
 </html>
