@@ -11,7 +11,30 @@
 '''
 
 from flask import Flask, render_template, request
+
+# #imports for mqtt-flask
+# from flask_mqtt import Mqtt
+# from flask_socketio import SocketIO
+
+# app.config['MQTT_BROKER_URL'] = '192.168.178.80'  # brokerip dit moet raspberry pi zijn
+# app.config['MQTT_BROKER_PORT'] = 1883  # default port for non-tls connection
+
+# mqtt = Mqtt(app)
+# socketio = SocketIO(app)
+
 app = Flask(__name__)
+
+#eventlet.monkey_patch()
+
+#  # functies voor handelen connectie met mqtt en messages vanuit topic
+# @mqtt.on_connect()
+# def handle_connect(client, userdata, flags, rc):
+#     mqtt.subscribe('esp32_gerben')
+
+# @mqtt.on_message()
+# def handle_mqtt_message(client, userdata, message):
+#     data = dict( topic=message.topic,payload=message.payload.decode())
+#     print(message.payload)
 
 import sqlite3
 
@@ -36,8 +59,8 @@ def index():
 	time, temp, hum = getData()
 	templateData = {
 	  'time'	: time,
-      'temp'	: temp,
-      'hum'		: hum
+      	  'temp'  : temp,
+      	  'hum'	: hum
 	}
 	return render_template('index.html', **templateData)
 
@@ -52,7 +75,8 @@ def logData (temp, hum):
 if __name__ == "__main__":
     conn=sqlite3.connect('../' + dbname)
     curs=conn.cursor()
-    curs.execute("CREATE TABLE IF NOT EXISTS DHT_data (timestamp DATETIME,  temp NUMERIC, hum NUMERIC);")
+    #database heeft ID colom nodig / aangezien we data voor beide esps moeten laten zien
+    curs.execute("CREATE TABLE IF NOT EXISTS DHT_data (ID TEXT, timestamp DATETIME,  temp NUMERIC, hum NUMERIC);")
     conn.commit()
     conn.close()
     logData(26.5, 29)
