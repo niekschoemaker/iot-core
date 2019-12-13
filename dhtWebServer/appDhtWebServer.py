@@ -45,18 +45,24 @@ def getData():
 	conn=sqlite3.connect('../sensorsData.db')
 	curs=conn.cursor()
 
+	#hier nog ID toevoegen
 	for row in curs.execute("SELECT * FROM DHT_data ORDER BY timestamp DESC LIMIT 1"):
-		time = str(row[0])
-		temp = row[1]
-		hum = row[2]
+		time = str(row[1])
+		temp = row[2]
+		hum = row[3]
+
+	for row in curs.execute("SELECT * FROM DHT_data Where ID = esp32_gerben ORDER BY timestamp DESC LIMIT 1"):
+		time2 = str(row[1])
+		temp2 = row[2]
+		hum2 = row[3]
 	conn.close()
-	return time, temp, hum
+	return time, temp, hum, time2, temp2, hum2
 
 # main route 
 @app.route("/")
 def index():
 	
-	time, temp, hum = getData()
+	time, temp, hum, time2, temp2, hum2 = getData()
 	templateData = {
 	  'time'	: time,
       	  'temp'  : temp,
