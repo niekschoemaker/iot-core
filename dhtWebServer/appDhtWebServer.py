@@ -11,7 +11,30 @@
 '''
 
 from flask import Flask, render_template, request
+
+# #imports for mqtt-flask
+# from flask_mqtt import Mqtt
+# from flask_socketio import SocketIO
+
+# app.config['MQTT_BROKER_URL'] = '192.168.178.80'  # brokerip dit moet raspberry pi zijn
+# app.config['MQTT_BROKER_PORT'] = 1883  # default port for non-tls connection
+
+# mqtt = Mqtt(app)
+# socketio = SocketIO(app)
+
 app = Flask(__name__)
+
+#eventlet.monkey_patch()
+
+#  # functies voor handelen connectie met mqtt en messages vanuit topic
+# @mqtt.on_connect()
+# def handle_connect(client, userdata, flags, rc):
+#     mqtt.subscribe('esp32_gerben')
+
+# @mqtt.on_message()
+# def handle_mqtt_message(client, userdata, message):
+#     data = dict( topic=message.topic,payload=message.payload.decode())
+#     print(message.payload)
 
 import sqlite3
 
@@ -22,22 +45,31 @@ def getData():
 	conn=sqlite3.connect('../sensorsData.db')
 	curs=conn.cursor()
 
+	#hier nog ID toevoegen
 	for row in curs.execute("SELECT * FROM DHT_data ORDER BY timestamp DESC LIMIT 1"):
-		time = str(row[0])
-		temp = row[1]
-		hum = row[2]
+		time = str(row[1])
+		temp = row[2]
+		hum = row[3]
+
+	for row in curs.execute("SELECT * FROM DHT_data Where ID = 'esp32_gerben' ORDER BY timestamp DESC LIMIT 1"):
+		time2 = str(row[1])
+		temp2 = row[2]
+		hum2 = row[3]
 	conn.close()
-	return time, temp, hum
+	return time, temp, hum, time2, temp2, hum2
 
 # main route 
 @app.route("/")
 def index():
 	
-	time, temp, hum = getData()
+	time, temp, hum, time2, temp2, hum2 = getData()
 	templateData = {
 	  'time'	: time,
-      'temp'	: temp,
-      'hum'		: hum
+      	  'temp'  : temp,
+      	  'hum'	: hum,
+	  'time2'	: time2,
+      	  'temp2'  : temp2,
+      	  'hum2'	: hum2
 	}
 	return render_template('index.html', **templateData)
 
@@ -45,14 +77,15 @@ def index():
 def logData (temp, hum):
 	conn=sqlite3.connect('../' + dbname)
 	curs=conn.cursor()
-	curs.execute("INSERT INTO DHT_data values(datetime('now'), (?), (?))", (temp, hum))
+	curs.execute("INSERT INTO DHT_data values('esp32_gerben',datetime('now'), (?), (?))", (temp, hum))
 	conn.commit()
 	conn.close()
 
 if __name__ == "__main__":
     conn=sqlite3.connect('../' + dbname)
     curs=conn.cursor()
-    curs.execute("CREATE TABLE IF NOT EXISTS DHT_data (timestamp DATETIME,  temp NUMERIC, hum NUMERIC);")
+    #database heeft ID colom nodig / aangezien we data voor beide esps moeten laten zien
+    curs.execute("CREATE TABLE IF NOT EXISTS DHT_data (ID TEXT, timestamp DATETIME,  temp NUMERIC, hum NUMERIC);")
     conn.commit()
     conn.close()
     logData(26.5, 29)
