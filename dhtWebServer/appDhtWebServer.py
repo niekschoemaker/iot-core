@@ -12,31 +12,32 @@
 
 from flask import Flask, render_template, request
 
-# #imports for mqtt-flask
-# from flask_mqtt import Mqtt
-# from flask_socketio import SocketIO
+import sqlite3
+import Json
 
-# app.config['MQTT_BROKER_URL'] = '192.168.178.80'  # brokerip dit moet raspberry pi zijn
-# app.config['MQTT_BROKER_PORT'] = 1883  # default port for non-tls connection
+#imports for mqtt-flask
+from flask_mqtt import Mqtt
+from flask_socketio import SocketIO
 
-# mqtt = Mqtt(app)
-# socketio = SocketIO(app)
+
 
 app = Flask(__name__)
+app.config['MQTT_BROKER_URL'] = '192.168.178.109'  # brokerip dit moet raspberry zijn
+app.config['MQTT_BROKER_PORT'] = 1883  # default port for non-tls connection
 
+mqtt = Mqtt(app)
+socketio = SocketIO(app)
 #eventlet.monkey_patch()
 
-#  # functies voor handelen connectie met mqtt en messages vanuit topic
-# @mqtt.on_connect()
-# def handle_connect(client, userdata, flags, rc):
-#     mqtt.subscribe('esp32_gerben')
+# functies voor handelen connectie met mqtt en messages vanuit topic
+@mqtt.on_connect()
+def handle_connect(client, userdata, flags, rc):
+    mqtt.subscribe('esp32_gerben')
 
-# @mqtt.on_message()
-# def handle_mqtt_message(client, userdata, message):
-#     data = dict( topic=message.topic,payload=message.payload.decode())
-#     print(message.payload)
-
-import sqlite3
+@mqtt.on_message()
+def handle_mqtt_message(client, userdata, message):
+    data = message.payload.decode("utf-8")
+    print(data)
 
 dbname='sensorsData.db'
 
