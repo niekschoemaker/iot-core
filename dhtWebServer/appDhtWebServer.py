@@ -16,6 +16,7 @@ import sqlite3
 from matplotlib.backends.backend_agg import FigureCanvasAgg as FigureCanvas
 from matplotlib.figure import Figure
 import io
+from datetime import datetime, timedelta 
 
 
 #imports for mqtt-flask
@@ -65,8 +66,30 @@ def getData():
 	conn.close()
 	return time, temp, hum, time2, temp2, hum2
 
+def getHistData(date):
+	conn=sqlite3.connect('../sensorsData.db')
+	curs=conn.cursor()
+
+	curs.execute("SELECT * FROM DHT_data where timestamp BETWEEN (?) AND (?)",(date, date +timedelta(minutes= 60)))
+	data = curs.fetchall()
+	dates1 = []
+	temps1 = []
+	hums1 = []
+
+	dates2 = []
+	temps2 = []
+	hums2 = []
+
+	for row in reversed(data):
+		print(row)
+		dates1.append(row[1])
+		temps1.append(row[2])
+		hums1.append(row[3])
+	conn.close()
+	
+
 # main route 
-@app.route("/")
+@app.route("/", methods=['POST','Get'])
 def index():
 	
 	time, temp, hum, time2, temp2, hum2 = getData()
@@ -78,14 +101,30 @@ def index():
       	  'temp2'  : temp2,
       	  'hum2'	: hum2
 	}
+	#Als er een post is uitgevoerd voor de grafieken
+	if request.method == 'POST':
+		startdate = request.form['starttime']
+		print(startdate)
+		date_in = startdate
+		date_processing = date_in.replace('T', '-').replace(':', '-').split('-')
+		date_processing = [int(v) for v in date_processing]
+		date_out = datetime(*date_processing)
+		
+		#dateformat testing: TIMEdelta WERKT! dit kan straks weg
+		date_out2 = date_out - timedelta(minutes=60)
+		print(date_out, date_out2)
+		
+		#functie om straks data voro grafieken op te halen
+		#getHistData(date_out2)
+	
 	return render_template('index.html', **templateData)
 
 # log sensor data on database
-def logData (espid,datetime,temp, hum):
+def logData (espid,timestamp,temp, hum):
 	print("loggin data for:" + espid)
 	conn=sqlite3.connect('../' + dbname)
 	curs=conn.cursor()
-	curs.execute("INSERT INTO DHT_data values((?), (?), (?), (?))",(espid, datetime, temp, hum))
+	curs.execute("INSERT INTO DHT_data values((?), (?), (?), (?))",(espid, timestamp, temp, hum))
 	conn.commit()
 	conn.close()
 

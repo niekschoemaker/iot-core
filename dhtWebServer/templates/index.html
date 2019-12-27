@@ -27,6 +27,20 @@
     <hr>
 	<h3> Last Sensors Reading: {{ time }} ==> <a href="/"class="button">REFRESH</a></h3>	
 	<hr>
+	<h4>
+		<form action="/" method="post">
+			Check graph between: <br>
+
+			PAS OP!! Het dataformat wat voor datums wordt gebruikt slaat nergens op -> in dit form type<br>
+			als je 24:01 s'nachts wilt hebben is dit: 12:01 AM als je 01:01 wilt hebben is dit 01:01AM<br>
+			hetzeldfe geldt voor smiddags: 12:01 is 12:01PM en 13:01 is 01:01 PM<br>
+
+			<input type="datetime-local" name="starttime"><br>
+			And:<br>
+			<input type="datetime-local" name="endtime"><br>
+			<input type="submit" value="Send">
+		</form>
+	</h4>
 	<p> @2018 Developed by MJRoBot.org adjusted by Niek & Gerben</p>
     
     <script src="../static/raphael-2.1.4.min.js"></script>
