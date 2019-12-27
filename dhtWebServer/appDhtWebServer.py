@@ -11,9 +11,12 @@
 '''
 
 from flask import Flask, render_template, request
-
+import json
 import sqlite3
-import Json
+from matplotlib.backends.backend_agg import FigureCanvasAgg as FigureCanvas
+from matplotlib.figure import Figure
+import io
+
 
 #imports for mqtt-flask
 from flask_mqtt import Mqtt
@@ -37,7 +40,10 @@ def handle_connect(client, userdata, flags, rc):
 @mqtt.on_message()
 def handle_mqtt_message(client, userdata, message):
     data = message.payload.decode("utf-8")
-    print(data)
+    jsonformat = json.loads(data)
+    #string = "INSERT INTO DHT_data values('esp32_gerben',{datetime}, {temp}, {hum})".format(**jsonformat)
+    logData(jsonformat['id'],jsonformat['datetime'],jsonformat['temp'],jsonformat['hum'])
+
 
 dbname='sensorsData.db'
 
@@ -75,10 +81,11 @@ def index():
 	return render_template('index.html', **templateData)
 
 # log sensor data on database
-def logData (temp, hum):
+def logData (espid,datetime,temp, hum):
+	print("loggin data for:" + espid)
 	conn=sqlite3.connect('../' + dbname)
 	curs=conn.cursor()
-	curs.execute("INSERT INTO DHT_data values('esp32_gerben',datetime('now'), (?), (?))", (temp, hum))
+	curs.execute("INSERT INTO DHT_data values((?), (?), (?), (?))",(espid, datetime, temp, hum))
 	conn.commit()
 	conn.close()
 
@@ -89,5 +96,5 @@ if __name__ == "__main__":
     curs.execute("CREATE TABLE IF NOT EXISTS DHT_data (ID TEXT, timestamp DATETIME,  temp NUMERIC, hum NUMERIC);")
     conn.commit()
     conn.close()
-    logData(26.5, 29)
+    #logData(26.5, 29)
     app.run(host='0.0.0.0', port=5000, debug=False)
