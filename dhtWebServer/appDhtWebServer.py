@@ -70,7 +70,7 @@ def getHistData(date):
 	conn=sqlite3.connect('../sensorsData.db')
 	curs=conn.cursor()
 
-	curs.execute("SELECT * FROM DHT_data where timestamp BETWEEN (?) AND (?)",(date, date +timedelta(minutes= 60)))
+	curs.execute("SELECT * FROM DHT_data WHERE timestamp BETWEEN (?) AND (?)",(date, date +timedelta(minutes= 60)))
 	data = curs.fetchall()
 	dates1 = []
 	temps1 = []
@@ -115,7 +115,7 @@ def index():
 		print(date_out, date_out2)
 		
 		#functie om straks data voro grafieken op te halen
-		#getHistData(date_out2)
+		getHistData(date_out2)
 	
 	return render_template('index.html', **templateData)
 
