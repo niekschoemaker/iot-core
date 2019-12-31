@@ -45,6 +45,16 @@ def handle_mqtt_message(client, userdata, message):
     #string = "INSERT INTO DHT_data values('esp32_gerben',{datetime}, {temp}, {hum})".format(**jsonformat)
     logData(jsonformat['id'],jsonformat['datetime'],jsonformat['temp'],jsonformat['hum'])
 
+#functie om datum vanaf html om te zetten in fatsoenlijk format
+def convertdateformat (date):
+	date_in = date
+	date_processing = date_in.replace('T', '-').replace(':', '-').split('-')
+	date_processing = [int(v) for v in date_processing]
+	date_out = datetime(*date_processing)
+	
+	return date_out
+
+
 
 dbname='sensorsData.db'
 
@@ -54,23 +64,26 @@ def getData():
 	curs=conn.cursor()
 
 	#hier nog ID toevoegen
-	for row in curs.execute("SELECT * FROM DHT_data ORDER BY timestamp DESC LIMIT 1"):
+	for row in curs.execute("SELECT * FROM DHT_data Where ID = 'esp32_gerben' ORDER BY timestamp DESC LIMIT 1"):
 		time = str(row[1])
 		temp = row[2]
 		hum = row[3]
-
-	for row in curs.execute("SELECT * FROM DHT_data Where ID = 'esp32_gerben' ORDER BY timestamp DESC LIMIT 1"):
+	for row in curs.execute("SELECT * FROM DHT_data ORDER BY timestamp DESC LIMIT 1"):
 		time2 = str(row[1])
 		temp2 = row[2]
 		hum2 = row[3]
+
 	conn.close()
 	return time, temp, hum, time2, temp2, hum2
 
-def getHistData(date):
+##
+# extra date nog toevoegen.
+##
+def getHistData(date, date2):
 	conn=sqlite3.connect('../sensorsData.db')
 	curs=conn.cursor()
 
-	curs.execute("SELECT * FROM DHT_data WHERE timestamp BETWEEN (?) AND (?)",(date, date +timedelta(minutes= 60)))
+	curs.execute("SELECT * FROM DHT_data WHERE timestamp BETWEEN (?) AND (?)",(date, date2))
 	data = curs.fetchall()
 	dates1 = []
 	temps1 = []
@@ -80,11 +93,20 @@ def getHistData(date):
 	temps2 = []
 	hums2 = []
 
+
 	for row in reversed(data):
+		print(row[0])
 		print(row)
-		dates1.append(row[1])
-		temps1.append(row[2])
-		hums1.append(row[3])
+		if row[0] == 'esp32_gerben':
+			dates1.append(row[1])
+			temps1.append(row[2])
+			hums1.append(row[3])
+		else:
+			dates2.append(row[1])
+			temps2.append(row[2])
+			hums2.append(row[3])
+
+	print(dates1)
 	conn.close()
 	
 
@@ -103,19 +125,24 @@ def index():
 	}
 	#Als er een post is uitgevoerd voor de grafieken
 	if request.method == 'POST':
-		startdate = request.form['starttime']
-		print(startdate)
-		date_in = startdate
-		date_processing = date_in.replace('T', '-').replace(':', '-').split('-')
-		date_processing = [int(v) for v in date_processing]
-		date_out = datetime(*date_processing)
+		startdatetime = request.form['starttime']
+		stopdatetime = request.form['endtime']
+		print(startdatetime)
+		print(stopdatetime)
+		print(convertdateformat(startdatetime))
+		# date_in = startdatetime
+		# date_processing = date_in.replace('T', '-').replace(':', '-').split('-')
+		# date_processing = [int(v) for v in date_processing]
+		# date_out = datetime(*date_processing)
+		date_out1 = convertdateformat(startdatetime) - timedelta(minutes=60)
+		date_out2 = convertdateformat(stopdatetime) - timedelta(minutes=60)
+	
 		
-		#dateformat testing: TIMEdelta WERKT! dit kan straks weg
-		date_out2 = date_out - timedelta(minutes=60)
-		print(date_out, date_out2)
+		print(date_out1, date_out2)
+		
 		
 		#functie om straks data voro grafieken op te halen
-		getHistData(date_out2)
+		getHistData(date_out1, date_out2)
 	
 	return render_template('index.html', **templateData)
 
@@ -137,3 +164,5 @@ if __name__ == "__main__":
     conn.close()
     #logData(26.5, 29)
     app.run(host='0.0.0.0', port=5000, debug=False)
+
+
