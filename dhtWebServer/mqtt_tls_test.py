@@ -17,7 +17,7 @@ def on_disconnect(client, userdata, rc):
 
 client1 = paho.Client("control1")
 client1.on_log=on_log
-client1.tls_set('/etc/mosquitto/certs/ca.crt')
+client1.tls_set('/etc/mosquitto/ca_certificates/ca.crt')
 client1.on_connect = on_connect
 client1.on_disconnect=on_disconnect
 client1.connect(broker,port)
