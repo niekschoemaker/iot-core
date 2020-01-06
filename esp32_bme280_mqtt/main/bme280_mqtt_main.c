@@ -120,7 +120,7 @@ static esp_err_t mqtt_event_handler(esp_mqtt_event_handle_t event)
         case MQTT_EVENT_SUBSCRIBED:
             ESP_LOGI(TAG, "MQTT_EVENT_SUBSCRIBED, msg_id=%d", event->msg_id);
             //msg_id = esp_mqtt_client_publish(client, CONFIG_EMITTER_CHANNEL_KEY"/topic/", "data", 0, 0, 0);
-            msg_id = esp_mqtt_client_publish(client, "topic", "data", 0, 0, 0);
+            msg_id = esp_mqtt_client_publish(client, CONFIG_EMITTER_CHANNEL_KEY, "data", 0, 0, 0);
             ESP_LOGI(TAG, "sent publish successful, msg_id=%d", msg_id);
             break;
         case MQTT_EVENT_UNSUBSCRIBED:
@@ -213,9 +213,9 @@ void bmp280_test(void *pvParamters)
          */
         ESP_LOGI(TAG, "[APP] Free memory: %d bytes", esp_get_free_heap_size());
         if (bme280p)
-            sprintf(jsonData, "{id:%s,press:%.2f,temp:%.2f,hum:%.2f,datetime:%s}", CONFIG_DEVICE_ID, pressure, temperature, humidity, dateString);
+            sprintf(jsonData, "{\"id\":\"%s\",\"press\":%.2f,\"temp\":%.2f,\"hum\":%.2f,\"datetime\":\"%s\"}", CONFIG_DEVICE_ID, pressure, temperature, humidity, dateString);
         else
-            sprintf(jsonData, "{id:%s,press:%.2f,temp:%.2f,datetime:%s}", CONFIG_DEVICE_ID, pressure, temperature, dateString);
+            sprintf(jsonData, "{\"id\":\"%s\",\"press\":%.2f,\"temp\":%.2f,\"datetime\":\"%s\"}", CONFIG_DEVICE_ID, pressure, temperature, dateString);
 
         int msg_id = esp_mqtt_client_publish(client, "topic", jsonData, 0, 0, 0);
         ESP_LOGI(TAG, "sent publish successful, msg_id=%d", msg_id);

@@ -1,0 +1,1 @@
+python3 $env:IDF_PATH\tools\idf.py monitor
