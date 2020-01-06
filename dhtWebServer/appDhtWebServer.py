@@ -15,6 +15,7 @@ import json
 import sqlite3
 from matplotlib.backends.backend_agg import FigureCanvasAgg as FigureCanvas
 from matplotlib.figure import Figure
+import matplotlib.pyplot as plt
 import io
 from datetime import datetime, timedelta 
 
@@ -22,8 +23,6 @@ from datetime import datetime, timedelta
 #imports for mqtt-flask
 from flask_mqtt import Mqtt
 from flask_socketio import SocketIO
-
-
 
 app = Flask(__name__)
 app.config['MQTT_BROKER_URL'] = '192.168.178.109'  # brokerip dit moet raspberry zijn
@@ -62,19 +61,27 @@ dbname='sensorsData.db'
 def getData():
 	conn=sqlite3.connect('../sensorsData.db')
 	curs=conn.cursor()
-
+	
 	#hier nog ID toevoegen
 	for row in curs.execute("SELECT * FROM DHT_data Where ID = 'esp32_gerben' ORDER BY timestamp DESC LIMIT 1"):
-		time = str(row[1])
-		temp = row[2]
-		hum = row[3]
-	for row in curs.execute("SELECT * FROM DHT_data ORDER BY timestamp DESC LIMIT 1"):
-		time2 = str(row[1])
-		temp2 = row[2]
-		hum2 = row[3]
+		timevar = str(row[1])
+		tempvar = row[2]
+		humvar = row[3]
+		print(curs.rowcount)
+		
+	timevar2 = '00:00:0000 00:00:00'
+	tempvar2 = 0
+	humvar2 = 0
+
+	for row2 in curs.execute("SELECT * FROM DHT_data Where ID='esp32_niek' ORDER BY timestamp DESC LIMIT 1"):
+		print(row2)
+		timevar2 = str(row2[1])
+		tempvar2 = row2[2]
+		humvar2 = row2[3]
+		print(row2)
 
 	conn.close()
-	return time, temp, hum, time2, temp2, hum2
+	return timevar, tempvar, humvar, timevar2, tempvar2, humvar2
 
 ##
 # extra date nog toevoegen.
@@ -106,21 +113,40 @@ def getHistData(date, date2):
 			temps2.append(row[2])
 			hums2.append(row[3])
 
-	print(dates1)
+	
+	# if len(dates1) and len(dates2) > 0:
+
+	# else if len(dates1) > 0 and len(dates2) = 0:
+	# elif len(dates1) = 0 and len(dates2) > 0: 
+	# else:
+	create_plots(dates1,temps1,hums1)			
+	
 	conn.close()
+
+def create_plots(dates,temps,hums):
+	plt.plot(dates,temps)
+	plt.savefig("test.png")
+	# fig = Figure()
+	# axis = fig.add_subplot()
+	
+	# axis.plot(dates, temps)
+	# #axis[0,1].plot(dates, hums)
+	# plot.show()
+	print("work in progress")
+
 	
 
 # main route 
 @app.route("/", methods=['POST','Get'])
 def index():
-	
+	time2 = 0
 	time, temp, hum, time2, temp2, hum2 = getData()
 	templateData = {
 	  'time'	: time,
       	  'temp'  : temp,
       	  'hum'	: hum,
 	  'time2'	: time2,
-      	  'temp2'  : temp2,
+      	  'temp2' : temp2,
       	  'hum2'	: hum2
 	}
 	#Als er een post is uitgevoerd voor de grafieken
