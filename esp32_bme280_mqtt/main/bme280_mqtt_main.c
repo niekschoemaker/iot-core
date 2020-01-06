@@ -5,12 +5,14 @@
 #include "esp_wifi.h"
 #include "esp_system.h"
 #include "nvs_flash.h"
+#include "esp_netif.h"
 #include <bmp280.h>
 
 #if defined(CONFIG_IDF_TARGET_ESP8266)
 #define SDA_GPIO 4
 #define SCL_GPIO 5
 #else
+//Voor BMP280 Niek: (buiten-naar binnen) wit(Vin), zwart(GND), rood(SDA), bruin(SCL)
 #define SDA_GPIO 15
 #define SCL_GPIO 2
 #endif
@@ -27,14 +29,19 @@
 
 #include "esp_log.h"
 #include "mqtt_client.h"
+#include "esp_tls.h"
 #include "esp_sntp.h"
+#include "esp_ota_ops.h"
 
-static const char *TAG = "MQTTS_SAMPLE";
+static const char *TAG = "BME280_MQTT";
 
 static EventGroupHandle_t wifi_event_group;
 const static int CONNECTED_BIT = BIT0;
 time_t now = 0;
 struct tm timeinfo = { 0 };
+
+extern const uint8_t mqtt_server_crt_start[]   asm("_binary_server_crt_start");
+extern const uint8_t mqtt_server_crt_end[]   asm("_binary_server_crt_end");
 
 static void wifi_event_handler(void* arg, esp_event_base_t event_base,
                                 int32_t event_id, void* event_data)
@@ -139,15 +146,16 @@ static esp_err_t mqtt_event_handler(esp_mqtt_event_handle_t event)
 static void mqtt_app_start(void)
 {
     const esp_mqtt_client_config_t mqtt_cfg = {
-        .uri = "mqtt://172.21.1.191",    // for mqtt over ssl
+        .uri = CONFIG_MQTT_URL,    // for mqtt over ssl
         // .uri = "mqtt://api.emitter.io:8080", //for mqtt over tcp
         // .uri = "ws://api.emitter.io:8080", //for mqtt over websocket
         // .uri = "wss://api.emitter.io:443", //for mqtt over websocket secure
+        //.cert_pem = (const char *)mqtt_server_crt_start,
         .event_handle = mqtt_event_handler,
     };
 
     ESP_LOGI(TAG, "[APP] Free memory: %d bytes", esp_get_free_heap_size());
-    client = esp_mqtt_client_init(&mqtt_cfg);
+    esp_mqtt_client_handle_t client = esp_mqtt_client_init(&mqtt_cfg);
     esp_mqtt_client_start(client);
 }
 
@@ -184,7 +192,8 @@ void bmp280_test(void *pvParamters)
     float pressure, temperature, humidity;
 
     // declare the string here so it only get's declared once, safes some load on the GC
-    char *hello_world = (char*)malloc(70 * sizeof(char));
+    char* jsonData = (char*)malloc(100 * sizeof(char));
+    char dateString[50];
     while (1)
     {
         vTaskDelay(5000 / portTICK_PERIOD_MS);
@@ -194,21 +203,24 @@ void bmp280_test(void *pvParamters)
             continue;
         }
 
+        time_t now = time(NULL);
+        struct tm *t = localtime(&now);
+        strftime(dateString, sizeof(dateString)-1, "%d-%m-%Y %H:%M:%S", t);
+
         /* float is used in printf(). you need non-default configuration in
          * sdkconfig for ESP8266, which is enabled by default for this
          * example. see sdkconfig.defaults.esp8266
          */
         ESP_LOGI(TAG, "[APP] Free memory: %d bytes", esp_get_free_heap_size());
-        ESP_LOGI(TAG, "[APP] Free memory: %d bytes", esp_get_free_heap_size());
         if (bme280p)
-            sprintf(hello_world, "Pressure: %.2f Pa, Temperature: %.2f C, Humidity: %.2f", pressure, temperature, humidity);
+            sprintf(jsonData, "{id:%s,press:%.2f,temp:%.2f,hum:%.2f,datetime:%s}", CONFIG_DEVICE_ID, pressure, temperature, humidity, dateString);
         else
-            sprintf(hello_world, "Pressure: %.2f Pa, Temperature: %.2f C", pressure, temperature);
+            sprintf(jsonData, "{id:%s,press:%.2f,temp:%.2f,datetime:%s}", CONFIG_DEVICE_ID, pressure, temperature, dateString);
 
-        int msg_id = esp_mqtt_client_publish(client, "topic", hello_world, 0, 0, 0);
+        int msg_id = esp_mqtt_client_publish(client, "topic", jsonData, 0, 0, 0);
         ESP_LOGI(TAG, "sent publish successful, msg_id=%d", msg_id);
 
-        memset(hello_world,0,strlen(hello_world));
+        memset(jsonData,0,strlen(jsonData));
     }
 }
 
@@ -237,7 +249,7 @@ void app_main()
     time(&now);
     localtime_r(&now, &timeinfo);
     // Is time set? If not, tm_year will be (1970 - 1900).
-    if (timeinfo.tm_year < (2016 - 1900)) {
+    if (timeinfo.tm_year < (2018 - 1900)) {
         ESP_LOGI(TAG, "Time is not set yet. Connecting to WiFi and getting time over NTP.");
         obtain_time();
         // update 'now' variable with current time
@@ -263,11 +275,12 @@ static void obtain_time(void)
     localtime_r(&now, &timeinfo);
 
     char strftime_buf[64];
-    // Set timezone to Eastern Standard Time and print local time
+    // Set timezone to GreenWich Mean Time and print local time
+    setenv("TZ", "GMT", 1);
     tzset();
     localtime_r(&now, &timeinfo);
     strftime(strftime_buf, sizeof(strftime_buf), "%c", &timeinfo);
-    ESP_LOGI(TAG, "The current date/time in New York is: %s", strftime_buf);
+    ESP_LOGI(TAG, "The current date/time in GMT is: %s", strftime_buf);
 }
 
 static void initialize_sntp(void)
