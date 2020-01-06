@@ -18,5 +18,17 @@ config EMITTER_CHANNEL_KEY
     help
         The Emitter channel key using to pub/sub
 
+config MQTT_URL
+    string "MQTT broker url"
+    default ""
+    help
+        The URL/IP where the MQTT broker was running
+
+config DEVICE_ID
+    string "Device ID"
+    default "1"
+    help
+        Device ID used to identify the device in the MQTT messages
+
 
 endmenu
