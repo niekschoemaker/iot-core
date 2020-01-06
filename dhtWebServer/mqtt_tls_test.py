@@ -1,6 +1,6 @@
 import paho.mqtt.client as paho
 import time
-broker='raspberrypigerben'
+broker='192.168.178.80'
 port=8883
 conn_flag = False
 
