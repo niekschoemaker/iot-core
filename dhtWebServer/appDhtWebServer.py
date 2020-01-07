@@ -16,16 +16,17 @@ import sqlite3
 from matplotlib.backends.backend_agg import FigureCanvasAgg as FigureCanvas
 from matplotlib.figure import Figure
 import matplotlib.pyplot as plt
+import matplotlib.dates
 import io
+import base64
 from datetime import datetime, timedelta 
-
 
 #imports for mqtt-flask
 from flask_mqtt import Mqtt
 from flask_socketio import SocketIO
 
 app = Flask(__name__)
-app.config['MQTT_BROKER_URL'] = '192.168.178.109'  # brokerip dit moet raspberry zijn
+app.config['MQTT_BROKER_URL'] = '192.168.178.164'  # brokerip dit moet raspberry zijn
 app.config['MQTT_BROKER_PORT'] = 1883  # default port for non-tls connection
 
 mqtt = Mqtt(app)
@@ -53,10 +54,6 @@ def convertdateformat (date):
 	
 	return date_out
 
-
-
-dbname='sensorsData.db'
-
 # Retrieve data from database
 def getData():
 	conn=sqlite3.connect('../sensorsData.db')
@@ -74,18 +71,13 @@ def getData():
 	humvar2 = 0
 
 	for row2 in curs.execute("SELECT * FROM DHT_data Where ID='esp32_niek' ORDER BY timestamp DESC LIMIT 1"):
-		print(row2)
 		timevar2 = str(row2[1])
 		tempvar2 = row2[2]
 		humvar2 = row2[3]
-		print(row2)
 
 	conn.close()
 	return timevar, tempvar, humvar, timevar2, tempvar2, humvar2
 
-##
-# extra date nog toevoegen.
-##
 def getHistData(date, date2):
 	conn=sqlite3.connect('../sensorsData.db')
 	curs=conn.cursor()
@@ -99,42 +91,79 @@ def getHistData(date, date2):
 	dates2 = []
 	temps2 = []
 	hums2 = []
-
-
+	no_data_warning = ""
 	for row in reversed(data):
-		print(row[0])
-		print(row)
+		
 		if row[0] == 'esp32_gerben':
-			dates1.append(row[1])
-			temps1.append(row[2])
-			hums1.append(row[3])
+			dates1.insert(0,row[1])
+			temps1.insert(0,row[2])
+			hums1.insert(0,row[3])
 		else:
-			dates2.append(row[1])
-			temps2.append(row[2])
-			hums2.append(row[3])
-
-	
-	# if len(dates1) and len(dates2) > 0:
-
-	# else if len(dates1) > 0 and len(dates2) = 0:
-	# elif len(dates1) = 0 and len(dates2) > 0: 
-	# else:
-	create_plots(dates1,temps1,hums1)			
-	
+			dates2.insert(0,row[1])
+			temps2.insert(0,row[2])
+			hums2.insert(0,row[3])
 	conn.close()
-
-def create_plots(dates,temps,hums):
-	plt.plot(dates,temps)
-	plt.savefig("test.png")
-	# fig = Figure()
-	# axis = fig.add_subplot()
 	
-	# axis.plot(dates, temps)
-	# #axis[0,1].plot(dates, hums)
-	# plot.show()
-	print("work in progress")
-
+	if len(dates1) and len(dates2) > 0:
+		img1 = create_plots("esp32_gerben",dates1,temps1,hums1)
+		img2 =create_plots("esp32_niek",dates2,temps2,hums2)	
+		no_data_warning = " "
+		return no_data_warning, img1, img2	
+	elif len(dates1) > 0 and len(dates2) == 0:
+		img1 = create_plots("esp32_gerben",dates1,temps1,hums1)
+		img2 = ""
+		no_data_warning = ""
+		return no_data_warning, img1, img2
+	elif len(dates1) == 0 and len(dates2) > 0: 
+		img1 = ""
+		img2 = create_plots("esp32_niek",dates2,temps2,hums2)	
+		no_data_warning = ""
+		return no_data_warning, img1, img2
+	else:
+		print("no data available")
+		img1 = ""
+		img2 = ""
+		no_data_warning = "no data available!!!!!!!!!!!!!!!!!!!!!!"	
+		return no_data_warning, img1, img2	
 	
+	
+	
+#function creates graph and returns as image.
+def create_plots(espid,dates,temps,hums):
+	fig,axs = plt.subplots(2,1)
+
+	axs[0].set_ylabel('temperature in C')
+	axs[1].set_ylabel('humidity in %')
+	axs[0].set_title('esp32_gerben')
+	axs[1].set_title('esp32_niek')
+
+	every_nth = 2
+	for n, label in enumerate(axs[0].xaxis.get_ticklabels()):
+		label.set_rotation(90)
+		label.set_horizontalalignment("right")
+		if n % every_nth != 0:
+			label.set_visible(False)
+		
+	for n, label in enumerate(axs[1].xaxis.get_ticklabels()):
+		label.set_rotation(90)
+		label.set_horizontalalignment("right")
+		if n % every_nth != 0:
+			label.set_visible(False)
+		
+	axs[0].plot(dates,temps)
+	axs[1].plot(dates,hums)
+	
+	fig.suptitle(id)
+	fig.set_figwidth(40)
+	fig.set_figheight(20)
+	fig.tight_layout()
+	
+	print("proccesing graphs")
+	pngImage = io.BytesIO()
+	FigureCanvas(fig).print_png(pngImage)
+	pngImageB64String = "data:image/png;base64,"
+	pngImageB64String += base64.b64encode(pngImage.getvalue()).decode('utf8')
+	return pngImageB64String
 
 # main route 
 @app.route("/", methods=['POST','Get'])
@@ -153,22 +182,14 @@ def index():
 	if request.method == 'POST':
 		startdatetime = request.form['starttime']
 		stopdatetime = request.form['endtime']
-		print(startdatetime)
-		print(stopdatetime)
-		print(convertdateformat(startdatetime))
-		# date_in = startdatetime
-		# date_processing = date_in.replace('T', '-').replace(':', '-').split('-')
-		# date_processing = [int(v) for v in date_processing]
-		# date_out = datetime(*date_processing)
 		date_out1 = convertdateformat(startdatetime) - timedelta(minutes=60)
 		date_out2 = convertdateformat(stopdatetime) - timedelta(minutes=60)
 	
-		
-		print(date_out1, date_out2)
-		
-		
-		#functie om straks data voro grafieken op te halen
-		getHistData(date_out1, date_out2)
+		#functie om grafieken op te halen en warning message
+		warning , image1, image2= getHistData(date_out1, date_out2)
+		templateData["warning"] = warning
+		templateData["image1"] = image1
+		templateData["image2"] = image2
 	
 	return render_template('index.html', **templateData)
 
@@ -180,6 +201,8 @@ def logData (espid,timestamp,temp, hum):
 	curs.execute("INSERT INTO DHT_data values((?), (?), (?), (?))",(espid, timestamp, temp, hum))
 	conn.commit()
 	conn.close()
+
+dbname='sensorsData.db'
 
 if __name__ == "__main__":
     conn=sqlite3.connect('../' + dbname)

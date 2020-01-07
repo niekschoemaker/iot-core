@@ -29,6 +29,7 @@
 	<hr>
 	<h4>
 		<form action="/" method="post">
+			{{warning}}
 			Check graph between: <br>
 
 			PAS OP!! Het dataformat wat voor datums wordt gebruikt slaat nergens op -> in dit form type<br>
@@ -40,7 +41,13 @@
 			<input type="datetime-local" name="endtime"><br>
 			<input type="submit" value="Send">
 		</form>
+		<br>{{warning}}<br> 
+
 	</h4>
+	<h5>
+		<img src="{{ image1}}"/><br>
+		<img src="{{ image2 }}"/><br>
+	</h5>
 	<p> @2018 Developed by MJRoBot.org adjusted by Niek & Gerben</p>
     
     <script src="../static/raphael-2.1.4.min.js"></script>
