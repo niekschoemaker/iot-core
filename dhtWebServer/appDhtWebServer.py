@@ -156,8 +156,8 @@ def create_plots(espid,dates,temps,hums):
 	axs[1].plot(dates,hums)
 	
 	fig.suptitle(id)
-	fig.set_figwidth(40)
-	fig.set_figheight(20)
+	fig.set_figwidth(20)
+	fig.set_figheight(10)
 	fig.tight_layout()
 	
 	print("proccesing graphs")
