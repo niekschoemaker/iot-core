@@ -100,6 +100,11 @@ static void wifi_init(void)
 }
 
 esp_mqtt_client_handle_t client;
+/**
+ * Extensive event handler for all needed events from the mqtt client.
+ * 
+ * Based on event handler from: https://github.com/espressif/esp-idf/blob/master/examples/protocols/mqtt/publish_test/main/publish_test.c
+ */
 static esp_err_t mqtt_event_handler(esp_mqtt_event_handle_t event)
 {
     client = event->client;
@@ -109,7 +114,7 @@ static esp_err_t mqtt_event_handler(esp_mqtt_event_handle_t event)
         case MQTT_EVENT_CONNECTED:
             ESP_LOGI(TAG, "MQTT_EVENT_CONNECTED");
             //msg_id = esp_mqtt_client_subscribe(client, CONFIG_EMITTER_CHANNEL_KEY"/topic/", 0);
-            msg_id = esp_mqtt_client_subscribe(client, "topic", 0);
+            msg_id = esp_mqtt_client_subscribe(client, CONFIG_EMITTER_CHANNEL_KEY, 0);
             ESP_LOGI(TAG, "sent subscribe successful, msg_id=%d", msg_id);
 
             break;
@@ -143,13 +148,14 @@ static esp_err_t mqtt_event_handler(esp_mqtt_event_handle_t event)
     return ESP_OK;
 }
 
+/**
+ * Sets config for the mqtt client.
+ */
 static void mqtt_app_start(void)
 {
     const esp_mqtt_client_config_t mqtt_cfg = {
         .uri = CONFIG_MQTT_URL,    // for mqtt over ssl
-        // .uri = "mqtt://api.emitter.io:8080", //for mqtt over tcp
-        // .uri = "ws://api.emitter.io:8080", //for mqtt over websocket
-        // .uri = "wss://api.emitter.io:443", //for mqtt over websocket secure
+        // Certificates don't seem to work for the python side, does work for esp to broker
         //.cert_pem = (const char *)mqtt_server_crt_start,
         .event_handle = mqtt_event_handler,
     };
@@ -176,13 +182,18 @@ void time_sync_notification_cb(struct timeval *tv)
     ESP_LOGI(TAG, "Notification of a time synchronization event");
 }
 
-void bmp280_test(void *pvParamters)
+/**
+ * Starts a infinte while loop which reads bmp280 sensor and sends data to mqtt broker.
+ * Main loop of the program which does all the work after all the initialization is done
+ */
+void bmp280_main(void *pvParamters)
 {
     bmp280_params_t params;
     bmp280_init_default_params(&params);
     bmp280_t dev;
     memset(&dev, 0, sizeof(bmp280_t));
 
+    // Make sure the device exists, otherwise reset the device (throw uncatched error)
     ESP_ERROR_CHECK(bmp280_init_desc(&dev, BMP280_I2C_ADDRESS_0, 0, SDA_GPIO, SCL_GPIO));
     ESP_ERROR_CHECK(bmp280_init(&dev, &params));
 
@@ -196,7 +207,9 @@ void bmp280_test(void *pvParamters)
     char dateString[50];
     while (1)
     {
+        // Wait 5 seconds
         vTaskDelay(5000 / portTICK_PERIOD_MS);
+        // Read all the data from the BMP sensor
         if (bmp280_read_float(&dev, &temperature, &pressure, &humidity) != ESP_OK)
         {
             printf("Temperature/pressure reading failed\n");
@@ -207,23 +220,42 @@ void bmp280_test(void *pvParamters)
         struct tm *t = localtime(&now);
         strftime(dateString, sizeof(dateString)-1, "%d-%m-%Y %H:%M:%S", t);
 
-        /* float is used in printf(). you need non-default configuration in
-         * sdkconfig for ESP8266, which is enabled by default for this
-         * example. see sdkconfig.defaults.esp8266
-         */
+        // Log the memory usage, to make sure there's no memory leaks
         ESP_LOGI(TAG, "[APP] Free memory: %d bytes", esp_get_free_heap_size());
         if (bme280p)
+            // Format the message in json format, all nubmers get rounded to 2 decimal points
             sprintf(jsonData, "{\"id\":\"%s\",\"press\":%.2f,\"temp\":%.2f,\"hum\":%.2f,\"datetime\":\"%s\"}", CONFIG_DEVICE_ID, pressure, temperature, humidity, dateString);
         else
             sprintf(jsonData, "{\"id\":\"%s\",\"press\":%.2f,\"temp\":%.2f,\"datetime\":\"%s\"}", CONFIG_DEVICE_ID, pressure, temperature, dateString);
 
-        int msg_id = esp_mqtt_client_publish(client, "topic", jsonData, 0, 0, 0);
+        // Publish message (json data) to the mqtt broker
+        int msg_id = esp_mqtt_client_publish(client, CONFIG_EMITTER_CHANNEL_KEY, jsonData, 0, 0, 0);
         ESP_LOGI(TAG, "sent publish successful, msg_id=%d", msg_id);
 
+        // Reset the string to all zero's to avoid left-over data in case the string changes length
         memset(jsonData,0,strlen(jsonData));
     }
 }
 
+/**
+ *   Wrapper to get and set the system time
+ */
+static void time_init(void) {
+    time_t now;
+    struct tm timeinfo;
+    time(&now);
+    localtime_r(&now, &timeinfo);
+    // Is time set? If not, tm_year will be (1970 - 1900).
+    if (timeinfo.tm_year < (2018 - 1900)) {
+        ESP_LOGI(TAG, "Time is not set yet. Connecting to NTP server and fetching time");
+        obtain_time();
+        // update 'now' variable with current time
+        time(&now);
+    }
+
+    int timestamp = time(NULL);
+    ESP_LOGI(TAG, "Time is: %i", timestamp);
+}
 
 void app_main()
 {
@@ -240,26 +272,16 @@ void app_main()
 
     nvs_flash_init();
     wifi_init();
+    time_init();
+    // Make sure i2c is working, otherwise restart the device (throw uncatched error)
     ESP_ERROR_CHECK(i2cdev_init());
-    xTaskCreatePinnedToCore(bmp280_test, "bmp280_test", configMINIMAL_STACK_SIZE * 8, NULL, 5, NULL, APP_CPU_NUM);
+    xTaskCreatePinnedToCore(bmp280_main, "bmp280_main", configMINIMAL_STACK_SIZE * 8, NULL, 5, NULL, APP_CPU_NUM);
     mqtt_app_start();
-
-    time_t now;
-    struct tm timeinfo;
-    time(&now);
-    localtime_r(&now, &timeinfo);
-    // Is time set? If not, tm_year will be (1970 - 1900).
-    if (timeinfo.tm_year < (2018 - 1900)) {
-        ESP_LOGI(TAG, "Time is not set yet. Connecting to WiFi and getting time over NTP.");
-        obtain_time();
-        // update 'now' variable with current time
-        time(&now);
-    }
-
-    int timestamp = time(NULL);
-    ESP_LOGI(TAG, "Time is: %i", timestamp);
 }
 
+/**
+ *   Initializes ntp and waits for ntp to set the time, stops waiting after 10 attempts (20 seconds)
+ */
 static void obtain_time(void)
 {
     initialize_sntp();
@@ -283,6 +305,9 @@ static void obtain_time(void)
     ESP_LOGI(TAG, "The current date/time in GMT is: %s", strftime_buf);
 }
 
+/**
+ *  Connects sntp driver to ntp server and initializes time syncing
+ */
 static void initialize_sntp(void)
 {
     ESP_LOGI(TAG, "Initializing SNTP");
