@@ -319,7 +319,7 @@ def send_confirmation_callback(message, result, user_context):
 IOT_HUB_MSG_TXT = "{\"deviceId\": \"Raspberry Pi\",\"temperature\": %f,\"humidity\": %f',\"pressure\": %f, \"rasptimestamp\": %s}"
 def send_message(temperature, humidity, pressure, rasptimestamp, message_count):
     # send a few messages every minute
-    global client,
+    global client
     print ("IoTHubClient sending %d messages" % message_count)
     msg_txt_formatted = IOT_HUB_MSG_TXT % (
         temperature,
