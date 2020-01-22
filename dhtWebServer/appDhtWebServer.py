@@ -316,12 +316,13 @@ def send_confirmation_callback(message, result, user_context):
     SEND_CALLBACKS += 1
     print ( "    Total calls confirmed: %d" % SEND_CALLBACKS )
 
-IOT_HUB_MSG_TXT = "{\"deviceId\": \"Raspberry Pi\",\"temperature\": %f,\"humidity\": %f',\"pressure\": %f, \"rasptimestamp\": %s}"
-def send_message(temperature, humidity, pressure, rasptimestamp, message_count):
+IOT_HUB_MSG_TXT = "{\"deviceId\": %f,\"temperature\": %f,\"humidity\": %f',\"pressure\": %f, \"rasptimestamp\": %s}"
+def send_message(espid, temperature, humidity, pressure, rasptimestamp, message_count):
     # send a few messages every minute
     global client
     print ("IoTHubClient sending %d messages" % message_count)
     msg_txt_formatted = IOT_HUB_MSG_TXT % (
+        espid
         temperature,
         humidity,
         pressure,
@@ -345,7 +346,7 @@ def logData (espid,timestamp,temp, hum):
 	curs=conn.cursor()
 	curs.execute("INSERT INTO DHT_data values((?), (?), (?), (?))",(espid, timestamp, temp, hum))
 	count = curs.fetchone("SELECT COUNT(*) FROM DHT_data WHERE ID = (?)", (espid))
-	send_message(temp, hum, None, timestamp, count)
+	send_message(espid,temp, hum, None, timestamp, count)
 	conn.commit()
 	conn.close()
 
