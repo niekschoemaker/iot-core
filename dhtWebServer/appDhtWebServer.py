@@ -322,7 +322,7 @@ def send_message(espid, temperature, humidity, pressure, rasptimestamp, message_
     global client
     print ("IoTHubClient sending %d messages" % message_count)
     msg_txt_formatted = IOT_HUB_MSG_TXT % (
-        espid
+        espid,
         temperature,
         humidity,
         pressure,
@@ -346,7 +346,7 @@ def logData (espid,timestamp,temp, hum):
 	curs=conn.cursor()
 	curs.execute("INSERT INTO DHT_data values((?), (?), (?), (?))",(espid, timestamp, temp, hum))
 	count = curs.fetchone("SELECT COUNT(*) FROM DHT_data WHERE ID = (?)", (espid))
-	send_message(espid,temp, hum, None, timestamp, count)
+	send_message(espid,temp, hum, 0, timestamp, count)
 	conn.commit()
 	conn.close()
 
