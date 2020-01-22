@@ -50,10 +50,11 @@ def handle_mqtt_message(client, userdata, message):
     jsonformat = json.loads(data)
     print(jsonformat['id'])
     
-#     if jsonformat['id'] !== 'esp32_gerben' or 'esp32_niek':
-# 	    print("message recieved from wrong sender!")
-#     else:
-# 	    logData(jsonformat['id'],jsonformat['datetime'],jsonformat['temp'],jsonformat['hum'])
+    if jsonformat['id'] == 'esp32_gerben' or jsonformat['id'] == 'esp32_niek':
+	    logData(jsonformat['id'],jsonformat['datetime'],jsonformat['temp'],jsonformat['hum'])
+    else:
+	    print("wrong message recieved BE CAREFULL!!!")
+
 
 #functie om datum vanaf html om te zetten in fatsoenlijk format
 def convertdateformat (date):
