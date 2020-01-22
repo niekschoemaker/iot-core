@@ -5,6 +5,8 @@
 #  
 #  Created by MJRoBot.org 
 #  10Jan18
+#  Edited by:
+#  Gerben Bunt and Niek Schoemaker
 
 '''
 	RPi Web Server for DHT captured data  
@@ -25,6 +27,8 @@ from datetime import datetime, timedelta
 from flask_mqtt import Mqtt
 from flask_socketio import SocketIO
 
+dbname='sensorsData.db'
+
 app = Flask(__name__)
 app.config['MQTT_BROKER_URL'] = '192.168.178.80'  # brokerip dit moet raspberry zijn
 app.config['MQTT_BROKER_PORT'] = 1883  # default port for non-tls connection
@@ -44,8 +48,11 @@ def handle_connect(client, userdata, flags, rc):
 def handle_mqtt_message(client, userdata, message):
     data = message.payload.decode("utf-8")
     jsonformat = json.loads(data)
-    #string = "INSERT INTO DHT_data values('esp32_gerben',{datetime}, {temp}, {hum})".format(**jsonformat)
-    logData(jsonformat['id'],jsonformat['datetime'],jsonformat['temp'],jsonformat['hum'])
+
+    if jsonformat['id'] != 'esp32_gerben' or 'esp32_niek':
+	    print("message recieved from wrong sender!")
+    else:
+	    logData(jsonformat['id'],jsonformat['datetime'],jsonformat['temp'],jsonformat['hum'])
 
 #functie om datum vanaf html om te zetten in fatsoenlijk format
 def convertdateformat (date):
@@ -204,16 +211,14 @@ def logData (espid,timestamp,temp, hum):
 	conn.commit()
 	conn.close()
 
-dbname='sensorsData.db'
+
 
 if __name__ == "__main__":
     conn=sqlite3.connect('../' + dbname)
     curs=conn.cursor()
-    #database heeft ID colom nodig / aangezien we data voor beide esps moeten laten zien
     curs.execute("CREATE TABLE IF NOT EXISTS DHT_data (ID TEXT, timestamp DATETIME,  temp NUMERIC, hum NUMERIC);")
     conn.commit()
     conn.close()
-    #logData(26.5, 29)
     app.run(host='0.0.0.0', port=5000, debug=False)
 
 
