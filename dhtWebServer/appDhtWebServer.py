@@ -48,8 +48,8 @@ def handle_connect(client, userdata, flags, rc):
 def handle_mqtt_message(client, userdata, message):
     data = message.payload.decode("utf-8")
     jsonformat = json.loads(data)
-
-    if jsonformat['id'] != 'esp32_gerben' or 'esp32_niek':
+    print(jsonformat['id'])
+    if jsonformat['id'] !== 'esp32_gerben' or 'esp32_niek':
 	    print("message recieved from wrong sender!")
     else:
 	    logData(jsonformat['id'],jsonformat['datetime'],jsonformat['temp'],jsonformat['hum'])
