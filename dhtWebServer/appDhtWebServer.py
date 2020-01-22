@@ -143,6 +143,8 @@ def getHistData(date, date2):
 def create_plots(espid,dates,temps,hums):
 	fig,axs = plt.subplots(2,1)
 
+	axs[0].set_xlabel('')
+	axs[1].set_xlabel('')
 	axs[0].set_ylabel('temperature in C')
 	axs[1].set_ylabel('humidity in %')
 	axs[0].set_title('esp32_gerben')
