@@ -147,8 +147,8 @@ def create_plots(espid,dates,temps,hums):
 	axs[1].set_xlabel('')
 	axs[0].set_ylabel('temperature in C')
 	axs[1].set_ylabel('humidity in %')
-	axs[0].set_title('esp32_gerben')
-	axs[1].set_title('esp32_niek')
+	axs[0].set_title(espid)
+	axs[1].set_title(espid)
 
 	every_nth = 2
 	for n, label in enumerate(axs[0].xaxis.get_ticklabels()):
