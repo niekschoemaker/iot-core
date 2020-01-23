@@ -30,7 +30,8 @@ from flask_socketio import SocketIO
 dbname='sensorsData.db'
 
 app = Flask(__name__)
-app.config['MQTT_BROKER_URL'] = '192.168.178.80'  # brokerip dit moet raspberry zijn
+app.config['MQTT_BROKER_URL'] = '172.21.1.92'  # brokerip dit moet raspberry zijn
+#app.config['MQTT_BROKER_URL'] = '192.168.178.80'  # brokerip dit moet raspberry zijn
 app.config['MQTT_BROKER_PORT'] = 1883  # default port for non-tls connection
 app.config['MQTT_USERNAME'] = 'gerben'
 app.config['MQTT_PASSWORD'] = 'bunt' 
